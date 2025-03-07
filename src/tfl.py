@@ -1,61 +1,50 @@
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col
-import pyspark.sql.functions as F
+from pyspark.sql.functions import col, datediff, current_date, to_date
+from pyspark.sql.types import DateType
 
-# Initialize SparkSession with Hive support
-spark = SparkSession.builder \
-    .appName("Postgres to Hive") \
-    .config("spark.sql.catalogImplementation", "hive") \
-    .config("spark.jars", "file:///C:/Users/44754/Downloads/postgresql-42.5.3.jar") \
-    .config("spark.sql.hive.metastore.uris", "thrift://18.169.244.191:8889") \
-    .config("spark.driver.memory", "4g") \
-    .config("spark.executor.memory", "4g") \
-    .enableHiveSupport() \
-    .getOrCreate()
+PG_TABLE_NAME= "tfl_underground_pyspark"
+HIVE_TABLE_NAME="tfl_data2"
 
-spark.conf.set("spark.hadoop.fs.defaultFS", "hdfs://172.31.3.80:8020")
+def initialize_spark():
+    """Initialize the Spark session."""
+    return SparkSession.builder.master("local").appName("tfl").enableHiveSupport().getOrCreate()
 
-# Show available databases
-spark.sql("SHOW DATABASES").show()
-spark.sql("USE default")
-spark.sql("SHOW TABLES").show()
-
-# PostgreSQL connection properties
-url = "jdbc:postgresql://18.170.23.150/testdb?ssl=false"  # Replace with your PostgreSQL connection details
-properties = {
-    "user": "consultants",
-    "password": "WelcomeItc@2022",
-    "driver": "org.postgresql.Driver"
-}
-
-# Step 1: Read data from PostgreSQL into a Spark DataFrame
-try:
-    df = spark.read.format("jdbc").options(
-        url=url,
-        dbtable="tfl_underground_pyspark",
-        user=properties["user"],
-        password=properties["password"],
-        driver=properties["driver"]
-    ).load()
+def load_data_from_postgres(spark):
+    """Load data from PostgreSQL."""
+    return spark.read.format("jdbc").option("url", "jdbc:postgresql://18.170.23.150:5432/testdb").option("driver", "org.postgresql.Driver").option("dbtable", PG_TABLE_NAME).option("user", "consultants").option("password", "WelcomeItc@2022").load()
     
-    print("Data successfully read from PostgreSQL:")
-    df.show(50)
-
-    # Step 2: Transform - Clean and Format the Data
-    # Convert 'Timestamp' to proper timestamp format
+def transform_data(df):
+    """Apply transformations to the dataframe."""
+    # Transformation 1: Fill empty 'category' with 'travel'
     df_transformed = df.withColumn("Timestamp", F.to_timestamp(col("Timestamp"), "dd/MM/yyyy HH:mm"))
-
-    # Replace "N/A" with null
-    df_transformed = df_transformed.replace("N/A", None)
     
-    # Step 3: Insert Transformed Data into Hive Table
-    df_transformed.write.mode("overwrite").saveAsTable("default.tfl_data")  # Replace "your_hive_table" with the desired Hive table name
+    # Transformation 2: Drop 'cc_num' column
+    df_transformed = df.replace("N/A", None)
     
-    print("Data successfully pushed to Hive table.")
+    
 
-except Exception as e:
-    print(f"An error occurred: {e}")
+    
+    
+    return df
 
-finally:
-    # Stop the SparkSession
-    spark.stop()
+def save_to_hive(df):
+    """Write the transformed dataframe to Hive."""
+    df.write.mode("overwrite").saveAsTable("default.{}".format(HIVE_TABLE_NAME))
+    print("Successfully Loaded to Hive")
+
+
+if __name__ == "__main__":
+    # Initialize Spark
+    spark = initialize_spark()
+    
+    # Load data from PostgreSQL
+    raw_df = load_data_from_postgres(spark)
+    
+    # Transform the data
+    transformed_df = transform_data(raw_df)
+    
+    # Save the transformed data to Hive
+    save_to_hive(transformed_df)
+
+#cd Pyspark
+#spark-submit --master local[*] --jars /var/lib/jenkins/workspace/nagaranipysparkdryrun/lib/postgresql-42.5.3.jar sop_loadToHive.py
