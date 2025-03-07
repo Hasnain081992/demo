@@ -2,10 +2,11 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 def initialize_spark():
-    """Initialize the Spark session."""
+    """Initialize the Spark session with Hive support."""
     return (
-        SparkSession.builder.master("local")
+        SparkSession.builder
         .appName("Minidemo")
+        .config("spark.sql.warehouse.dir", "/user/hive/warehouse")
         .enableHiveSupport()
         .getOrCreate()
     )
@@ -31,6 +32,8 @@ def transform_data(df):
 
 def save_to_hive(df):
     """Write the transformed DataFrame to Hive."""
+    # Ensure the Hive context is properly configured
+    spark.sql("CREATE DATABASE IF NOT EXISTS default")
     df.write.mode("overwrite").saveAsTable("default.tfl_data")
     print("Successfully Loaded to Hive")
 
@@ -39,3 +42,4 @@ if __name__ == "__main__":
     raw_df = load_data_from_postgres(spark)
     transformed_df = transform_data(raw_df)
     save_to_hive(transformed_df)
+    spark.stop()
