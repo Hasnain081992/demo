@@ -16,3 +16,6 @@ df_transformed = df_transformed.na.replace("N/A", None)
 df_transformed.write.mode("overwrite").saveAsTable("lokhandwala.tfl")
 print("Successfully loaded to Hive")
 # spark-submit --master local[*] --jars /var/lib/jenkins/workspace/nagaranipysparkdryrun/lib/postgresql-42.5.3.jar src/full_load_postgresToHive.py
+
+# hadoop fs -ls /warehouse/tablespace/external/hive/lokhandwala.db/tfl
+# sudo -u jenkins hadoop fs -chmod -R 755 /warehouse/tablespace/external/hive/lokhandwala.db/tfl
