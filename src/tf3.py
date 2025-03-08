@@ -1,12 +1,26 @@
-from pyspark.sql import *
-from pyspark.sql.functions import *
+from pyspark.sql import SparkSession
 
-spark = SparkSession.builder.master("local").appName("Minipro").enableHiveSupport().getOrCreate()
+# Initialize Spark
+spark = SparkSession.builder.master("local[*]") \
+    .appName("Minipro") \
+    .config("spark.jars", "/var/lib/jenkins/workspace/nagaranipysparkdryrun/lib/postgresql-42.5.3.jar") \
+    .enableHiveSupport().getOrCreate()
 
-df = spark.read.format("jdbc").option("url", "jdbc:postgresql://18.170.23.150:5432/testdb").option("driver", "org.postgresql.Driver").option("dbtable", "demo_hasan").option("user", "consultants").option("password", "WelcomeItc@2022").load()
+# Ensure the Hive database exists
+spark.sql("CREATE DATABASE IF NOT EXISTS lokhandwala1")
+
+# Read data from PostgreSQL
+df = spark.read.format("jdbc") \
+    .option("url", "jdbc:postgresql://18.170.23.150:5432/testdb") \
+    .option("driver", "org.postgresql.Driver") \
+    .option("dbtable", "demo_hasan") \
+    .option("user", "consultants") \
+    .option("password", "WelcomeItc@2022") \
+    .load()
+
+# Print Schema
 df.printSchema()
 
-df.write.mode("overwrite").saveAsTable("lokhandwala.demohas")
-print("Successfully Load to Hive")
-
-# spark-submit --master local[*] --jars /var/lib/jenkins/workspace/nagaranipysparkdryrun/lib/postgresql-42.5.3.jar src/full_load_postgresToHive.py
+# Save Data to Hive
+df.write.mode("overwrite").saveAsTable("lokhandwala1.demohas")
+print("Successfully Loaded to Hive")
