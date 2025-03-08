@@ -1,7 +1,7 @@
 from pyspark.sql import *
 from pyspark.sql.functions import *
 
-spark = SparkSession.builder.master("local(4)").appName("Minipro").enableHiveSupport().getOrCreate()
+spark = SparkSession.builder.master("local").appName("Minipro").enableHiveSupport().getOrCreate()
 
 df = spark.read.format("jdbc").option("url", "jdbc:postgresql://18.170.23.150:5432/testdb").option("driver", "org.postgresql.Driver").option("dbtable", "tfl_underground_pyspark").option("user", "consultants").option("password", "WelcomeItc@2022").load()
 df.printSchema()
